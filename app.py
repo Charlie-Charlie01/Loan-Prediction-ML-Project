@@ -19,53 +19,10 @@ This application predicts whether your loan application will be approved based o
 Fill in the details below and click the 'Predict' button to see the result.
 """)
 
-# Check for required packages
-missing_packages = []
-try:
-    import sklearn
-except ImportError:
-    missing_packages.append("scikit-learn")
-
-# Show warning if packages are missing
-if missing_packages:
-    st.error(f"""
-    ### Missing Required Packages
-    
-    The following packages need to be installed:
-    **{', '.join(missing_packages)}**
-    
-    Please run this command in your terminal:
-    ```
-    pip install {' '.join(missing_packages)}
-    ```
-    
-    After installation, restart the Streamlit app with:
-    ```
-    streamlit run app.py
-    ```
-    """)
-    st.stop()  # Stop execution if packages are missing
-
 # Function to load the pre-trained model
 @st.cache_resource
 def load_model():
     try:
-        # First check if scikit-learn is installed
-        try:
-            import sklearn
-        except ImportError:
-            st.error("""
-            Error: scikit-learn is not installed. 
-            
-            Please install it by running this command in your terminal:
-            ```
-            pip install scikit-learn
-            ```
-            
-            Then restart the Streamlit app.
-            """)
-            return None
-            
         # In a real application, you would have your model saved as a pickle file
         # For demonstration, we'll create a dummy model if file doesn't exist
         if os.path.exists('loan_model.pkl'):
