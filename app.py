@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
+import pickle  # This is a standard library, no need to install separately
 import os
-from PIL import Image
+from PIL import Image  # From the pillow package
 
 # Set page configuration
 st.set_page_config(
@@ -19,10 +19,53 @@ This application predicts whether your loan application will be approved based o
 Fill in the details below and click the 'Predict' button to see the result.
 """)
 
+# Check for required packages
+missing_packages = []
+try:
+    import sklearn
+except ImportError:
+    missing_packages.append("scikit-learn")
+
+# Show warning if packages are missing
+if missing_packages:
+    st.error(f"""
+    ### Missing Required Packages
+    
+    The following packages need to be installed:
+    **{', '.join(missing_packages)}**
+    
+    Please run this command in your terminal:
+    ```
+    pip install {' '.join(missing_packages)}
+    ```
+    
+    After installation, restart the Streamlit app with:
+    ```
+    streamlit run app.py
+    ```
+    """)
+    st.stop()  # Stop execution if packages are missing
+
 # Function to load the pre-trained model
 @st.cache_resource
 def load_model():
     try:
+        # First check if scikit-learn is installed
+        try:
+            import sklearn
+        except ImportError:
+            st.error("""
+            Error: scikit-learn is not installed. 
+            
+            Please install it by running this command in your terminal:
+            ```
+            pip install scikit-learn
+            ```
+            
+            Then restart the Streamlit app.
+            """)
+            return None
+            
         # In a real application, you would have your model saved as a pickle file
         # For demonstration, we'll create a dummy model if file doesn't exist
         if os.path.exists('loan_model.pkl'):
@@ -115,27 +158,15 @@ def preprocess_inputs(data):
     # Marital Status
     df['Married'] = 1 if data['Married'] == 'Married' else 0
     
-    # Dependents - One-hot encode
+    # Dependents - Keep as a single feature as in the original model
     if data['Dependents'] == '0':
-        df['Dependents_0'] = 1
-        df['Dependents_1'] = 0
-        df['Dependents_2'] = 0
-        df['Dependents_3+'] = 0
+        df['Dependents'] = 0
     elif data['Dependents'] == '1':
-        df['Dependents_0'] = 0
-        df['Dependents_1'] = 1
-        df['Dependents_2'] = 0
-        df['Dependents_3+'] = 0
+        df['Dependents'] = 1
     elif data['Dependents'] == '2':
-        df['Dependents_0'] = 0
-        df['Dependents_1'] = 0
-        df['Dependents_2'] = 1
-        df['Dependents_3+'] = 0
+        df['Dependents'] = 2
     else:  # '3+'
-        df['Dependents_0'] = 0
-        df['Dependents_1'] = 0
-        df['Dependents_2'] = 0
-        df['Dependents_3+'] = 1
+        df['Dependents'] = 3
     
     # Education
     df['Education'] = 1 if data['Education'] == 'Graduate' else 0
@@ -146,33 +177,25 @@ def preprocess_inputs(data):
     # Credit History
     df['Credit_History'] = 1 if data['Credit_History'] == 'Yes' else 0
     
-    # Property Area - One-hot encode
+    # Property Area - Keep as a single feature as in the original model
     if data['Property_Area'] == 'Urban':
-        df['Property_Area_Urban'] = 1
-        df['Property_Area_Semiurban'] = 0
-        df['Property_Area_Rural'] = 0
+        df['Property_Area'] = 0  # Using 0 for Urban
     elif data['Property_Area'] == 'Semiurban':
-        df['Property_Area_Urban'] = 0
-        df['Property_Area_Semiurban'] = 1
-        df['Property_Area_Rural'] = 0
+        df['Property_Area'] = 1  # Using 1 for Semiurban
     else:  # 'Rural'
-        df['Property_Area_Urban'] = 0
-        df['Property_Area_Semiurban'] = 0
-        df['Property_Area_Rural'] = 1
+        df['Property_Area'] = 2  # Using 2 for Rural
     
     # Standard scaling for numerical features (in a real app, you would use the same scaler used during training)
     df['ApplicantIncome'] = data['ApplicantIncome'] / 10000  # Simple scaling
     df['CoapplicantIncome'] = data['CoapplicantIncome'] / 10000  # Simple scaling
     df['LoanAmount'] = data['LoanAmount'] / 10000  # Simple scaling
     df['Loan_Amount_Term'] = data['Loan_Amount_Term'] / 100  # Simple scaling
-    df['Loan_Amount_Income_Ratio'] = data['Loan_Amount_Income_Ratio']
     
     # Select and order features to match the training data
-    # In a real application, this would be determined by your model's training features
-    # For demonstration, we'll use a subset of features
-    features = ['Gender', 'Married', 'Education', 'Self_Employed', 'ApplicantIncome',
-                'CoapplicantIncome', 'LoanAmount', 'Loan_Amount_Term', 'Credit_History',
-                'Property_Area_Urban', 'Property_Area_Semiurban', 'Loan_Amount_Income_Ratio']
+    # Using feature names that match the original model
+    features = ['Gender', 'Married', 'Dependents', 'Education', 'Self_Employed', 
+                'ApplicantIncome', 'CoapplicantIncome', 'LoanAmount', 
+                'Loan_Amount_Term', 'Credit_History', 'Property_Area']
     
     return df[features]
 
@@ -199,8 +222,7 @@ if predict_button:
                 'LoanAmount': loan_amount,
                 'Loan_Amount_Term': loan_amount_term,
                 'Credit_History': credit_history,
-                'Property_Area': property_area,
-                'Loan_Amount_Income_Ratio': loan_amount_income_ratio
+                'Property_Area': property_area
             }
             
             # Preprocess the input data
